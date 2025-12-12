@@ -18,7 +18,7 @@ new PipelineStack(app, 'MusicLynxFusekiPipelineStack', {
   githubOwner: 'darkjazz',
   githubRepo: 'musiclynx-fuseki',
   githubBranch: 'main', // Change to 'develop' if needed
-  githubTokenSecretName: 'github-token',
+  githubTokenSecretName: 'github-access-token',
   tags: {
     Project: 'MusicLynx',
     Component: 'Pipeline',
