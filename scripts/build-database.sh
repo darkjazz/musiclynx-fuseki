@@ -24,6 +24,10 @@ docker run --rm \
   stain/jena-fuseki \
   /bin/bash -c "java -cp 'fuseki-server.jar:*' tdb2.tdbloader --loc /databases/$DATASET_NAME /data/artist_abstract_graph.ttl /data/artist_category_graph.ttl"
 
+# Fix permissions so Fuseki container can read the database
+echo "Fixing database file permissions..."
+chmod -R 777 "$DB_DIR"
+
 echo ""
 echo "✓ Database built successfully!"
 echo "  Location: $DB_DIR"
