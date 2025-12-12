@@ -27,10 +27,10 @@ else
   # Create database directory
   mkdir -p "$DB_DIR"
 
-  # Load data using tdb2loader
+  # Load data using tdb2loader with memory constraints
   echo "Loading 108MB of RDF triples into TDB2 database..."
   cd /jena-fuseki
-  java -cp 'fuseki-server.jar:*' tdb2.tdbloader \
+  java ${JVM_ARGS:--Xmx512m -Xms256m} -cp 'fuseki-server.jar:*' tdb2.tdbloader \
     --loc "$DB_DIR" \
     /tmp/data/artist_abstract_graph.ttl \
     /tmp/data/artist_category_graph.ttl
