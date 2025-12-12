@@ -166,6 +166,17 @@ export class MusicLynxFusekiStack extends cdk.Stack {
       networkMode: ecs.NetworkMode.BRIDGE,
     });
 
+    // Grant S3 read access to download TTL files at runtime
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject', 's3:ListBucket'],
+        resources: [
+          'arn:aws:s3:::musiclynx-fuseki-data-eu-north-1',
+          'arn:aws:s3:::musiclynx-fuseki-data-eu-north-1/*',
+        ],
+      })
+    );
+
     // Container Definition
     const container = taskDefinition.addContainer('fuseki', {
       image: ecs.ContainerImage.fromEcrRepository(this.ecrRepository, 'latest'),

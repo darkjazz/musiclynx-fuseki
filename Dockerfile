@@ -1,14 +1,24 @@
 FROM stain/jena-fuseki
 
-# Copy Fuseki configuration (includes pre-built database)
+# Install AWS CLI for downloading TTL files from S3
+USER root
+RUN apt-get update && \
+    apt-get install -y awscli && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy Fuseki configuration
 COPY --chown=100:100 fuseki/ /fuseki/
 
-# Ensure database directory has correct permissions for runtime
-# Fuseki needs to create lock files when it starts (user 100 needs write access)
-RUN chmod -R 775 /fuseki/databases/musiclynx
+# Copy entrypoint script that loads data on first run
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh && \
+    chown 100:100 /docker-entrypoint.sh
+
+# Switch back to Fuseki user
+USER 100
 
 # Expose Fuseki port
 EXPOSE 3030
 
-# Use default Fuseki entrypoint
-# Data is already loaded in the database
+# Use custom entrypoint that loads data from S3 on first run
+ENTRYPOINT ["/docker-entrypoint.sh"]
