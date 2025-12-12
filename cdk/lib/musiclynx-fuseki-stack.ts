@@ -108,18 +108,42 @@ export class MusicLynxFusekiStack extends cdk.Stack {
       ],
     });
 
+    // Create Launch Template with T3 Unlimited for consistent performance
+    const launchTemplate = new ec2.LaunchTemplate(this, 'EcsLaunchTemplate', {
+      instanceType,
+      machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+      securityGroup: ecsSecurityGroup,
+      role: ecsInstanceRole,
+      userData: ec2.UserData.forLinux(),
+    });
+
+    // Add ECS cluster configuration to user data
+    const userData = launchTemplate.userData;
+    if (userData) {
+      userData.addCommands(
+        `echo ECS_CLUSTER=${this.cluster.clusterName} >> /etc/ecs/ecs.config`
+      );
+    }
+
+    // Enable T3 Unlimited using CloudFormation escape hatch
+    // This prevents query slowdowns when CPU credits are exhausted
+    // Charges only for CPU usage beyond baseline (typically <$1/month for this workload)
+    const cfnLaunchTemplate = launchTemplate.node.defaultChild as ec2.CfnLaunchTemplate;
+    cfnLaunchTemplate.launchTemplateData = {
+      ...cfnLaunchTemplate.launchTemplateData,
+      creditSpecification: {
+        cpuCredits: 'unlimited',
+      },
+    };
+
     // Auto Scaling Group for ECS EC2 instances
     const autoScalingGroup = new autoscaling.AutoScalingGroup(this, 'EcsAsg', {
       vpc,
-      instanceType,
-      machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+      launchTemplate,
       minCapacity: 1,
       maxCapacity: 1,
       desiredCapacity: 1,
-      securityGroup: ecsSecurityGroup,
-      role: ecsInstanceRole,
       vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC }, // Public subnets for free tier
-      associatePublicIpAddress: true,
     });
 
     // Add capacity provider to cluster
@@ -170,15 +194,12 @@ export class MusicLynxFusekiStack extends cdk.Stack {
       protocol: ecs.Protocol.TCP,
     });
 
-    // Get desired count from context (allows starting with 0 tasks until image is ready)
-    const desiredCountContext = this.node.tryGetContext('desiredCount');
-    const desiredCount = desiredCountContext !== undefined ? Number(desiredCountContext) : 0;
-
     // ECS Service
+    // The pipeline ensures the Docker image exists before deploying this stack
     this.service = new ecs.Ec2Service(this, 'FusekiService', {
       cluster: this.cluster,
       taskDefinition,
-      desiredCount: desiredCount,
+      desiredCount: 1, // Pipeline ensures image exists first
       serviceName: 'musiclynx-fuseki-service',
       capacityProviderStrategies: [
         {
@@ -186,8 +207,6 @@ export class MusicLynxFusekiStack extends cdk.Stack {
           weight: 1,
         },
       ],
-      // Don't wait for service to stabilize during deployment
-      // This prevents getting stuck when image doesn't exist yet
       deploymentController: {
         type: ecs.DeploymentControllerType.ECS,
       },

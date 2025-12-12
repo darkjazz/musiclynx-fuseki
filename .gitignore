@@ -48,3 +48,4 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
+cdk/repo.hook

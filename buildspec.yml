@@ -1,0 +1,46 @@
+version: 0.2
+
+# CodeBuild specification for building MusicLynx Fuseki Docker image
+# This runs in AWS CodeBuild as part of the CDK Pipeline
+
+phases:
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/musiclynx-fuseki
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - echo "Building image with tag $IMAGE_TAG"
+
+  build:
+    commands:
+      - echo "Building TDB2 database from TTL files..."
+      - chmod +x scripts/build-database.sh
+      - ./scripts/build-database.sh
+      - echo "Removing lock file if exists..."
+      - rm -f ./fuseki/databases/musiclynx/tdb.lock
+      - echo "Building Docker image..."
+      - docker build -t $REPOSITORY_URI:latest -t $REPOSITORY_URI:$IMAGE_TAG .
+      - echo "Validating triplestore..."
+      - chmod +x scripts/validate-triplestore.sh
+      - ./scripts/validate-triplestore.sh
+
+  post_build:
+    commands:
+      - echo "Pushing Docker image to ECR..."
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo "Writing image definitions file..."
+      - printf '[{"name":"fuseki","imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+      - echo "Build completed on $(date)"
+
+artifacts:
+  files:
+    - imagedefinitions.json
+    - cdk.out/**/*
+
+cache:
+  paths:
+    - '/root/.npm/**/*'
+    - 'node_modules/**/*'
