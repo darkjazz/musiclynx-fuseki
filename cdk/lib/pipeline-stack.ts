@@ -184,8 +184,8 @@ export class PipelineStack extends cdk.Stack {
       actions: [
         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
           actionName: 'Deploy_Infrastructure',
-          stackName: 'MusicLynxFusekiStack',
-          templatePath: cloudAssemblyArtifact.atPath('MusicLynxFusekiStack.template.json'),
+          stackName: 'Deploy-MusicLynxFusekiStack',
+          templatePath: cloudAssemblyArtifact.atPath('Deploy-MusicLynxFusekiStack.template.json'),
           adminPermissions: true, // Required for creating IAM roles
         }),
       ],
