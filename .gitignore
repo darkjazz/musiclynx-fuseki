@@ -1,0 +1,50 @@
+# Node modules
+node_modules/
+cdk/node_modules/
+
+# CDK
+cdk.out/
+cdk/.env
+*.d.ts
+*.js
+!cdk/jest.config.js
+
+# Fuseki runtime files
+fuseki/logs/
+fuseki/backups/
+fuseki/system/
+fuseki/system_files/
+fuseki/databases/*/tdb.lock
+fuseki/databases/musiclynx-categories/
+
+# Data files (large TTL files - keep in Git LFS or separate)
+data/*.ttl
+
+# Database files (generated, too large for git)
+fuseki/databases/musiclynx/Data-*/
+
+# Docker
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# AWS credentials (never commit!)
+.aws/
+*.pem
+*.key
+
+# Temporary files
+*.tmp
+*.bak
+
+# Build artifacts
+dist/
+build/

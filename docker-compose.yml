@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  fuseki:
+    build: .
+    ports:
+      - "3030:3030"
+    environment:
+      - ADMIN_PASSWORD=admin
+      - JVM_ARGS=-Xmx768m -Xms512m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3030/$$/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

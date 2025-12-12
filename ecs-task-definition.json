@@ -1,0 +1,51 @@
+{
+  "family": "musiclynx-fuseki",
+  "networkMode": "bridge",
+  "containerDefinitions": [
+    {
+      "name": "fuseki",
+      "image": "YOUR_ECR_REPO_URI:latest",
+      "cpu": 1024,
+      "memory": 896,
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3030,
+          "hostPort": 3030,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "ADMIN_PASSWORD",
+          "value": "changeme"
+        },
+        {
+          "name": "JVM_ARGS",
+          "value": "-Xmx768m -Xms512m"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/musiclynx-fuseki",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "fuseki"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:3030/$/ping || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ],
+  "requiresCompatibilities": ["EC2"],
+  "cpu": "1024",
+  "memory": "896"
+}

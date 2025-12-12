@@ -1,0 +1,23 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+DEPLOYMENT.md
+CLAUDE.md
+
+# AWS
+ecs-task-definition.json
+
+# Local testing
+*.log
+.DS_Store
+
+# Fuseki runtime directories (only exclude the old categories database and lock files)
+fuseki/databases/musiclynx-categories/
+fuseki/databases/musiclynx/*.lock
+fuseki/logs/*
+fuseki/backups/*
+fuseki/system/*
+fuseki/system_files/*
