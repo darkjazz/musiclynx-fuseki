@@ -2,9 +2,7 @@ FROM stain/jena-fuseki
 
 # Install AWS CLI for downloading TTL files from S3
 USER root
-RUN apt-get update && \
-    apt-get install -y awscli && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache aws-cli
 
 # Copy Fuseki configuration
 COPY --chown=100:100 fuseki/ /fuseki/
