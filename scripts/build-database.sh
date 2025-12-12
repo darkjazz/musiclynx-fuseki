@@ -16,17 +16,19 @@ mkdir -p "$DB_DIR"
 echo "Loading data using Apache Jena TDB2 tools..."
 echo "Processing 108MB of RDF triples (artist abstracts + categories)..."
 
-# Use Docker to run tdb2loader
+# Use Docker to run tdb2loader as user 100:100 (same as Fuseki runtime user)
+# This ensures files are created with correct ownership
 docker run --rm \
+  --user 100:100 \
   -v "$(pwd)/data:/data:ro" \
   -v "$(pwd)/fuseki/databases:/databases" \
   -w /jena-fuseki \
   stain/jena-fuseki \
   /bin/bash -c "java -cp 'fuseki-server.jar:*' tdb2.tdbloader --loc /databases/$DATASET_NAME /data/artist_abstract_graph.ttl /data/artist_category_graph.ttl"
 
-# Fix permissions so Fuseki container can read the database
-echo "Fixing database file permissions..."
-chmod -R 777 "$DB_DIR"
+# Ensure world-readable permissions for good measure
+echo "Setting database file permissions..."
+chmod -R 755 "$DB_DIR"
 
 echo ""
 echo "✓ Database built successfully!"
