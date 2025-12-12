@@ -122,7 +122,7 @@ export class PipelineStack extends cdk.Stack {
           build: {
             commands: [
               'npm run build',
-              'npx cdk synth',
+              'npx cdk synth --all',
             ],
           },
         },
@@ -172,20 +172,13 @@ export class PipelineStack extends cdk.Stack {
     });
 
     // Deploy stage
-    const deployStage = new FusekiStage(this, 'Deploy', {
-      env: {
-        account: this.account,
-        region: this.region,
-      },
-    });
-
     pipeline.addStage({
       stageName: 'Deploy',
       actions: [
         new codepipeline_actions.CloudFormationCreateUpdateStackAction({
           actionName: 'Deploy_Infrastructure',
-          stackName: 'Deploy-MusicLynxFusekiStack',
-          templatePath: cloudAssemblyArtifact.atPath('Deploy-MusicLynxFusekiStack.template.json'),
+          stackName: 'MusicLynxFusekiStack',
+          templatePath: cloudAssemblyArtifact.atPath('MusicLynxFusekiStack.template.json'),
           adminPermissions: true, // Required for creating IAM roles
         }),
       ],
