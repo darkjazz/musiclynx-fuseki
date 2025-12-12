@@ -91,6 +91,17 @@ export class PipelineStack extends cdk.Stack {
       })
     );
 
+    // Grant permissions to read TTL files from S3
+    dockerBuildProject.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject', 's3:ListBucket'],
+        resources: [
+          'arn:aws:s3:::musiclynx-fuseki-data-eu-north-1',
+          'arn:aws:s3:::musiclynx-fuseki-data-eu-north-1/*',
+        ],
+      })
+    );
+
     // CodeBuild project for CDK synth
     const cdkSynthProject = new codebuild.PipelineProject(this, 'CdkSynth', {
       projectName: 'musiclynx-fuseki-cdk-synth',
