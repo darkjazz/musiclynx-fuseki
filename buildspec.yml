@@ -15,6 +15,10 @@ phases:
 
   build:
     commands:
+      - echo "Downloading TTL files from S3..."
+      - mkdir -p data
+      - aws s3 cp s3://musiclynx-fuseki-data-eu-north-1/artist_abstract_graph.ttl data/
+      - aws s3 cp s3://musiclynx-fuseki-data-eu-north-1/artist_category_graph.ttl data/
       - echo "Building TDB2 database from TTL files..."
       - chmod +x scripts/build-database.sh
       - ./scripts/build-database.sh

@@ -7,6 +7,7 @@ which are not reliable, so it is necessary to find an alternative solution using
 # Project Context
 
 Ask clarifying questions before making architectural changes.
+Always inform when git push is required, it is manually done.
 
 ## Key Directories
 
