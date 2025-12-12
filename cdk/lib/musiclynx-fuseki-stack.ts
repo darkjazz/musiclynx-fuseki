@@ -28,7 +28,7 @@ export interface MusicLynxFusekiStackProps extends cdk.StackProps {
 }
 
 export class MusicLynxFusekiStack extends cdk.Stack {
-  public readonly ecrRepository: ecr.Repository;
+  public readonly ecrRepository: ecr.IRepository;
   public readonly cluster: ecs.Cluster;
   public readonly service: ecs.Ec2Service;
   public readonly loadBalancerDnsName: cdk.CfnOutput;
