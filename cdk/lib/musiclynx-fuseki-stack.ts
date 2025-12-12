@@ -58,18 +58,12 @@ export class MusicLynxFusekiStack extends cdk.Stack {
           ],
         });
 
-    // ECR Repository
-    this.ecrRepository = new ecr.Repository(this, 'FusekiRepository', {
-      repositoryName: 'musiclynx-fuseki',
-      removalPolicy: cdk.RemovalPolicy.DESTROY, // Change to RETAIN for production
-      emptyOnDelete: true, // Clean up images on stack deletion
-      lifecycleRules: [
-        {
-          description: 'Keep last 3 images',
-          maxImageCount: 3,
-        },
-      ],
-    });
+    // ECR Repository - use existing repository created by the pipeline
+    this.ecrRepository = ecr.Repository.fromRepositoryName(
+      this,
+      'FusekiRepository',
+      'musiclynx-fuseki'
+    );
 
     // ECS Cluster
     this.cluster = new ecs.Cluster(this, 'MusicLynxCluster', {
