@@ -1,219 +1,102 @@
-# MusicLynx Fuseki Triple Store
+# MusicLynx Artist Database
 
-A reliable Apache Jena Fuseki triple store deployment for the [MusicLynx](https://musiclynx.github.io) music discovery platform, containing DBpedia music artist abstracts and categories.
+A PostgreSQL database on AWS RDS containing DBpedia music artist abstracts and categories for the [MusicLynx](https://musiclynx.github.io) discovery platform.
 
 ## Overview
 
-This project provides an AWS ECS deployment of Fuseki with pre-loaded music metadata to replace unreliable DBpedia SPARQL endpoints. The triple store contains:
+This project replaces direct DBpedia SPARQL endpoint queries with a self-hosted PostgreSQL database. Artist data is extracted from DBpedia TTL dumps, converted to SQL, and loaded into an RDS instance deployed via AWS CDK.
 
-- **Artist Abstracts** (46MB): Descriptive text about music artists from DBpedia
-- **Artist Categories** (62MB): Category classifications for music artists
-- **Total Dataset**: 108MB of RDF triples in Turtle format
+The database contains:
 
-**Note**: The TTL data files are not included in this repository due to size (108MB). You need to:
-1. Extract them from DBpedia dumps yourself, or
-2. Download from a separate data repository
-3. Place them in the `data/` directory before building
-
-## Quick Start
-
-Deploy to AWS ECS (free tier eligible) with a single command:
-
-```bash
-./deploy.sh
-```
-
-This will:
-1. Install dependencies
-2. Deploy AWS infrastructure using CDK
-3. Build and push the Docker image
-4. Start the Fuseki service
-5. Display the SPARQL endpoint URL
-
-**See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.**
-
-## Local Development
-
-Test locally with Docker:
-
-```bash
-# Using Docker Compose
-docker-compose up
-
-# Or manually
-docker build -t musiclynx-fuseki .
-docker run -p 3030:3030 musiclynx-fuseki
-
-# Test the endpoint
-curl http://localhost:3030/$/ping
-curl "http://localhost:3030/musiclynx/query" \
-  --data-urlencode "query=SELECT * { ?s ?p ?o } LIMIT 10"
-```
+- **Artists**: ~90k music artists with names, types, and description abstracts
+- **Categories**: DBpedia category classifications
+- **Artist-Category relationships**: Junction table linking artists to categories
 
 ## Project Structure
 
 ```
 .
-├── data/                          # TTL data files (108MB)
-│   ├── artist_abstract_graph.ttl  # Artist abstracts (46MB)
-│   └── artist_category_graph.ttl  # Artist categories (62MB)
-├── fuseki/                        # Fuseki configuration
-│   ├── config.ttl                 # Server configuration
-│   ├── configuration/             # Dataset configurations
-│   └── databases/                 # TDB2 databases (generated)
-├── cdk/                           # AWS CDK infrastructure code
-│   ├── lib/                       # CDK stack definitions
-│   ├── bin/                       # CDK app entry point
-│   └── README.md                  # CDK documentation
-├── Dockerfile                     # Container image definition
-├── load-data.sh                   # Data loading script
-├── docker-compose.yml             # Local development setup
-├── deploy.sh                      # Automated deployment script
-├── get-endpoint.sh                # Get deployment endpoint URL
-├── destroy.sh                     # Cleanup script
-├── DEPLOYMENT.md                  # Detailed deployment guide
-└── README.md                      # This file
+├── cdk/                           # AWS CDK infrastructure
+│   ├── bin/musiclynx-fuseki.ts    # CDK entry point (deploys RDS stack)
+│   ├── lib/musiclynx-rds-stack.ts # RDS PostgreSQL stack definition
+│   └── ...                        # CDK config and dependencies
+├── data/                          # Source TTL files (gitignored)
+│   └── README.md                  # Data provenance docs
+├── sql/
+│   └── 01-schema.sql              # Database schema (tracked)
+│   └── *.sql                      # Data insert files (gitignored)
+├── parse-ttl-to-sql.js            # TTL to SQL converter
+├── import-to-rds.sh               # RDS data import script
+├── destroy.sh                     # Emergency AWS cleanup
+└── README.md
 ```
 
-## Architecture
+## Database Schema
 
-The deployment uses:
+Three tables defined in `sql/01-schema.sql`:
 
-- **Region**: eu-north-1 (Stockholm)
-- **AWS CDK** for Infrastructure as Code
-- **Amazon ECS on EC2** (t3.micro for free tier - 2 vCPUs, 1GB RAM)
-- **Amazon ECR** for Docker image storage
-- **TDB2** for efficient triple storage
-- **CloudWatch** for logging
+- **artists** (`uri`, `name`, `type`, `description`) - Primary key on URI
+- **categories** (`uri`, `name`) - Primary key on URI
+- **artist_categories** (`artist_uri`, `category_uri`) - Junction table with foreign keys
 
-Data is pre-loaded into the Docker image for reliability and fast startup.
+Includes indexes on name, type, and a GIN index for full-text search on descriptions.
 
-## SPARQL Endpoint
+## Regenerating SQL from TTL
 
-After deployment, the SPARQL endpoint is available at:
+If you need to regenerate the SQL data files from source TTL:
 
-```
-http://YOUR_PUBLIC_IP:3030/musiclynx/query
-```
+1. Place TTL files in `data/`:
+   - `artist_abstract_graph.ttl` (artist abstracts)
+   - `artist_category_graph.ttl` (artist categories)
 
-Example queries:
+2. Run the converter:
+   ```bash
+   node parse-ttl-to-sql.js
+   ```
 
-```sparql
-# Get artist abstracts
-SELECT ?artist ?abstract WHERE {
-  ?artist <http://www.w3.org/2000/01/rdf-schema#label> ?abstract .
-} LIMIT 10
+   This produces `sql/02-artists.sql`, `sql/03-categories.sql`, `sql/04-artist-categories.sql`, etc.
 
-# Get artist categories
-SELECT ?artist ?category WHERE {
-  ?artist <http://www.w3.org/2004/02/skos/core#broader> ?category .
-} LIMIT 10
-```
-
-## Integration with MusicLynx
-
-Update your MusicLynx server configuration to use this endpoint:
-
-```javascript
-// In musiclynx-server config
-const FUSEKI_ENDPOINT = 'http://YOUR_PUBLIC_IP:3030/musiclynx/query';
-```
-
-## Cost
-
-**Free tier eligible** for 12 months:
-- EC2: 750 hours/month of t3.micro (covers 24/7 operation)
-- ECR: 500MB storage (image is ~300-400MB)
-- Data transfer: 100GB/month outbound
-- CloudWatch: 5GB logs
-
-**Estimated monthly cost**: $0 (within free tier)
-
-After free tier: ~$8-10/month
-
-**Bonus**: t3.micro has 2 vCPUs (vs t2.micro's 1 vCPU) for better performance!
-
-## Deployment Options
-
-### Automated (Recommended)
-
-```bash
-./deploy.sh
-```
-
-### Manual with CDK
+## Deploying Infrastructure
 
 ```bash
 cd cdk
 npm install
-npx cdk bootstrap
+npx cdk bootstrap   # first time only
 npx cdk deploy
-cd ..
-# Then build and push Docker image
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for complete manual instructions.
+This creates an RDS PostgreSQL instance (db.t3.micro, free tier eligible) in eu-north-1.
 
-## Management
+## Importing Data to RDS
 
-### Get Endpoint URL
+After deployment, import the schema and data:
 
 ```bash
-./get-endpoint.sh
+./import-to-rds.sh
 ```
 
-### View Logs
+This fetches credentials from AWS Secrets Manager and runs all SQL files against the RDS instance.
 
-```bash
-aws logs tail /ecs/musiclynx-fuseki --follow
-```
-
-### Update Image
-
-```bash
-# After modifying data or configuration
-docker build -t musiclynx-fuseki .
-docker tag musiclynx-fuseki:latest $ECR_REPO_URI:latest
-docker push $ECR_REPO_URI:latest
-
-aws ecs update-service \
-  --cluster musiclynx-cluster \
-  --service musiclynx-fuseki-service \
-  --force-new-deployment
-```
-
-### Destroy Infrastructure
+## Destroying Infrastructure
 
 ```bash
 ./destroy.sh
 ```
 
+## Integration
+
+The MusicLynx server connects to this database via a `DATABASE_URL` environment variable. See [musiclynx-server](https://github.com/darkjazz/musiclynx-server) for details.
+
 ## Related Repositories
 
-- [musiclynx](https://github.com/darkjazz/musiclynx) - MusicLynx frontend (Angular)
-- [musiclynx-server](https://github.com/darkjazz/musiclynx-server) - MusicLynx server (Express.js)
+- [musiclynx](https://github.com/darkjazz/musiclynx) - Frontend (Angular)
+- [musiclynx-server](https://github.com/darkjazz/musiclynx-server) - Server (Express.js)
 
-## Live Deployments
+## Live
 
-- **MusicLynx UI**: https://musiclynx.github.io/#/dashboard
-- **MusicLynx Server**: https://musiclynx-server.fly.dev
-
-## Technical Details
-
-- **Fuseki Version**: Based on `stain/jena-fuseki` Docker image
-- **Storage**: TDB2 (Jena's native triple store)
-- **Memory**: 768MB JVM heap (fits in 1GB instance)
-- **Startup Time**: ~60 seconds (data pre-loaded)
-- **Query Performance**: Local queries (no network latency to DBpedia)
-
-## Troubleshooting
-
-See [DEPLOYMENT.md](DEPLOYMENT.md#troubleshooting) for common issues and solutions.
+- **UI**: https://musiclynx.github.io/#/dashboard
+- **Server**: https://musiclynx-server.fly.dev
 
 ## License
 
-This project contains data from DBpedia, which is licensed under the terms of the Creative Commons Attribution-ShareAlike 3.0 License and the GNU Free Documentation License.
-
-## Contributing
-
-Issues and pull requests are welcome!
+Data sourced from DBpedia, licensed under Creative Commons Attribution-ShareAlike 3.0 and GNU Free Documentation License.

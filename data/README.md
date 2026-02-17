@@ -1,45 +1,39 @@
 # Data Directory
 
-Place your TTL data files here:
+Source TTL files extracted from DBpedia dumps. These are gitignored due to size (~108MB total).
 
-- `artist_abstract_graph.ttl` (46MB) - Artist abstracts from DBpedia
-- `artist_category_graph.ttl` (62MB) - Artist categories from DBpedia
+## Files
 
-## How to Obtain Data
+- `artist_abstract_graph.ttl` (~46MB) - Artist abstracts from DBpedia
+- `artist_category_graph.ttl` (~62MB) - Artist categories from DBpedia
 
-The data files are extracted from DBpedia dumps. You can:
+## How to Obtain
 
-1. **Extract from DBpedia dumps yourself**:
-   - Download from https://downloads.dbpedia.org/
-   - Extract music artist abstracts and categories
-   - Convert to Turtle format
+The data files are extracted from DBpedia dumps:
 
-2. **Use existing extracts** (if available):
-   - Contact the MusicLynx project maintainers
-   - Check for a separate data repository
+1. Download from https://downloads.dbpedia.org/
+2. Extract music artist abstracts and categories
+3. Convert to Turtle format
+4. Place in this directory
 
-## Expected Format
+Or contact the MusicLynx project maintainers for existing extracts.
 
-The files should be in Turtle (TTL) format containing:
+## TTL Format
 
 ### artist_abstract_graph.ttl
 - Subject: DBpedia artist URIs
-- Predicate: rdfs:comment
-- Object: Artist descriptions/abstracts
+- Predicate: `rdfs:comment`
+- Object: Artist description text
 
 ### artist_category_graph.ttl
 - Subject: DBpedia artist URIs
-- Predicate: dcterms:subject
+- Predicate: `dcterms:subject`
 - Object: Category URIs
 
-## After Adding Data
-
-Once you have the TTL files in this directory:
+## Converting to SQL
 
 ```bash
-# Build the TDB2 database
-./build-data.sh
-
-# Deploy to AWS
-./deploy.sh
+node parse-ttl-to-sql.js
 ```
+
+This reads the TTL files and generates SQL insert files in the `sql/` directory.
