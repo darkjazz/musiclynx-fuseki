@@ -35,7 +35,7 @@ echo ""
 # Set PGPASSWORD for psql
 export PGPASSWORD="$DB_PASSWORD"
 
-echo "Importing schema..."
+echo "Importing DBpedia schema..."
 psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/01-schema.sql
 
 echo "Importing artists (this may take a few minutes)..."
@@ -48,7 +48,31 @@ echo "Importing artist-category relationships..."
 psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/04-artist-categories.sql
 
 echo ""
-echo "✓ Import complete!"
+echo "Importing similarity schema..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/02-similarity-schema.sql
+
+echo "Importing artist links (MBID <-> DBpedia URI)..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/05-artist-links.sql
+
+echo "Importing moodplay similarity..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/06-moodplay-similar.sql
+
+echo "Importing AB similarity (this may take a few minutes)..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" \
+  -c "\COPY ab_similar FROM 'sql/07-ab-similar.csv' WITH (FORMAT csv, HEADER true)"
+
+echo ""
+echo "Importing genres schema..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/08-genres-schema.sql
+
+echo "Importing genres..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/09-genres.sql
+
+echo "Importing artist-genre relationships..."
+psql -h "$DB_ENDPOINT" -U "$DB_USERNAME" -d "$DB_NAME" -f sql/10-artist-genres.sql
+
+echo ""
+echo "Import complete!"
 echo ""
 echo "Connection string for musiclynx-server:"
 echo "postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_ENDPOINT:5432/$DB_NAME"
